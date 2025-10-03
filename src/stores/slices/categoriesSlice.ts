@@ -1,4 +1,4 @@
-// src/stores/slices/categoriesSlice.ts
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 import { addCategoryApi, deleteCategoryApi, fetchCategoriesApi, updateCategoryApi } from "../../apis/categoryApi";

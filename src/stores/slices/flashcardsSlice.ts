@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { fetchVocabsApi, markVocabAsLearnedApi } from "../../apis/FlashcardApi";
-import type { Vocab } from "./vocabSLice";
+
 import type { Category } from "../../types/category";
+import type { Vocab } from "../../types/vocab";
 
 
 interface FlashcardState {
