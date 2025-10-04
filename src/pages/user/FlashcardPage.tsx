@@ -5,7 +5,7 @@ import "./FlashCardPage.css";
 import PaginationAntd from "../../components/common/Pagination";
 import Footer from "../../components/common/Footer";
 import FlashCard from "../../components/UI/FlashCard";
-
+import Swal from "sweetalert2"; // Thêm sweetalert2
 
 interface Vocab {
   id: number;
@@ -74,14 +74,42 @@ class FlashCardPage extends React.Component<{}, State> {
 
   handleNext = () => {
     const filtered = this.getFilteredVocabs().filter(v => !v.isLearned);
-    this.setState(prev => ({
-      currentIndex: Math.min(prev.currentIndex + 1, filtered.length - 1),
-      flipped: false,
-    }));
+    if (this.state.currentIndex >= filtered.length - 1) {
+      // Hết từ
+      if (filtered.length > 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Bạn vẫn chưa học hết!",
+          text: `Bạn còn ${filtered.length} từ chưa học. Cố gắng lần sau nhé 🚀`,
+        });
+      } else {
+        // Học xong tất cả
+        Swal.fire({
+          title: "Chúc mừng 🎉",
+          text: "Bạn đã học xong toàn bộ bài!",
+          imageUrl: "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif",
+          imageWidth: 400,
+          imageHeight: 200,
+          imageAlt: "Celebration",
+        });
+      }
+    } else {
+      this.setState(prev => ({
+        currentIndex: Math.min(prev.currentIndex + 1, filtered.length - 1),
+        flipped: false,
+      }));
+    }
   };
 
   handlePrevious = () => {
-    const filtered = this.getFilteredVocabs().filter(v => !v.isLearned);
+    if (this.state.currentIndex === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Cảnh báo",
+        text: "Bạn đang ở từ đầu tiên rồi!",
+      });
+      return;
+    }
     this.setState(prev => ({
       currentIndex: Math.max(prev.currentIndex - 1, 0),
       flipped: false,
@@ -96,8 +124,23 @@ class FlashCardPage extends React.Component<{}, State> {
         const updatedVocabs = prev.vocabs.map(v =>
           v.id === current.id ? { ...v, isLearned: true } : v
         );
-        const unlearned = updatedVocabs.filter(v => !v.isLearned && (prev.filterCategoryId === "All" || v.categoryId === prev.filterCategoryId));
+        const unlearned = updatedVocabs.filter(v => 
+          !v.isLearned && (prev.filterCategoryId === "All" || v.categoryId === prev.filterCategoryId)
+        );
         const newIndex = Math.min(prev.currentIndex, Math.max(unlearned.length - 1, 0));
+
+        // Nếu học xong hết
+        if (unlearned.length === 0) {
+          Swal.fire({
+            title: "Tuyệt vời 🎇",
+            text: "Bạn đã học hết tất cả từ!",
+            imageUrl: "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
+            imageWidth: 400,
+            imageHeight: 200,
+            imageAlt: "Fireworks",
+          });
+        }
+
         return {
           vocabs: updatedVocabs,
           currentIndex: newIndex,

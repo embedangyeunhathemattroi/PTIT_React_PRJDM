@@ -2,24 +2,27 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
-
+import { Select } from "antd"; // ✅ Dùng Ant Design Select
 import "bootstrap/dist/css/bootstrap.min.css";
+import "antd/dist/reset.css";
+import "./Categories.css";
+
 import {
   addCategory,
   deleteCategory,
   fetchCategories,
   updateCategory,
-  
+  filterCategories,
 } from "../../stores/slices/categoriesSlice";
-import "./Categories.css";
+
 import PaginationAntd from "../../components/common/Pagination";
 import Footer from "../../components/common/Footer";
 import type { Category } from "../../types/category";
 
-
 const CategoriesPage: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
+
   const { categories = [], loading = false } = useSelector(
     (state: any) => state.categories || {}
   );
@@ -27,40 +30,65 @@ const CategoriesPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [nameInput, setNameInput] = useState("");
-  const [descriptionInput, setDescriptionInput] = useState("");
+  const [topicInput, setTopicInput] = useState("");
   const [search, setSearch] = useState("");
+  const [filterTopic, setFilterTopic] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Lấy danh sách ban đầu
   useEffect(() => {
     dispatch(fetchCategories());
   }, [dispatch]);
+
+  // Lọc theo topic
+  useEffect(() => {
+    if (filterTopic === "All") {
+      dispatch(fetchCategories());
+    } else {
+      dispatch(filterCategories(filterTopic));
+    }
+  }, [filterTopic, dispatch]);
 
   const openModal = (cat?: Category) => {
     if (cat) {
       setEditCategory(cat);
       setNameInput(cat.name);
-      setDescriptionInput(cat.topic);
+      setTopicInput(cat.topic);
     } else {
       setEditCategory(null);
       setNameInput("");
-      setDescriptionInput("");
+      setTopicInput("");
     }
     setModalOpen(true);
   };
 
   const closeModal = () => setModalOpen(false);
 
-  const saveCategory = () => {
-    if (!nameInput || !descriptionInput) return;
-    if (editCategory) {
-      dispatch(
-        updateCategory({ ...editCategory, name: nameInput, topic: descriptionInput })
-      );
-    } else {
-      dispatch(addCategory({ name: nameInput, topic: descriptionInput }));
+  const saveCategory = async () => {
+    if (!nameInput || !topicInput) {
+      Swal.fire("Warning", "Please fill all fields!", "warning");
+      return;
     }
-    closeModal();
+
+    try {
+      if (editCategory) {
+        await dispatch(
+          updateCategory({ ...editCategory, name: nameInput, topic: topicInput })
+        ).unwrap();
+        Swal.fire("Updated!", "Category updated successfully!", "success");
+      } else {
+        await dispatch(addCategory({ name: nameInput, topic: topicInput })).unwrap();
+        Swal.fire("Added!", "Category added successfully!", "success");
+      }
+
+      if (filterTopic === "All") dispatch(fetchCategories());
+      else dispatch(filterCategories(filterTopic));
+
+      closeModal();
+    } catch (err) {
+      Swal.fire("Error", "Something went wrong!", "error");
+    }
   };
 
   const removeCategory = (id: number) => {
@@ -70,47 +98,81 @@ const CategoriesPage: React.FC = () => {
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes, delete it!",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        dispatch(deleteCategory(id));
+        try {
+          await dispatch(deleteCategory(id)).unwrap();
+          Swal.fire("Deleted!", "Category has been deleted!", "success");
+          if (filterTopic === "All") dispatch(fetchCategories());
+          else dispatch(filterCategories(filterTopic));
+        } catch {
+          Swal.fire("Error", "Failed to delete category!", "error");
+        }
       }
     });
   };
 
-  // Filter + pagination
+  // Tìm kiếm + phân trang
   const filtered = categories.filter((cat: Category) =>
     cat.name.toLowerCase().includes(search.toLowerCase())
   );
-
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const displayed = filtered.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+  // ✅ Danh sách topics cho dropdown Ant Design
+  const topicOptions = [
+    { value: "All", label: "All Topics" },
+    ...[...new Set(categories.map((cat: Category) => cat.topic))].map((topic) => ({
+      value: topic,
+      label: topic,
+    })),
+  ];
+
   return (
     <div className="d-flex flex-column min-vh-100">
-      {/* Main */}
       <main className="flex-fill container mt-5 pt-5">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold fs-1">Vocabulary Categories</h2>
-          <button className="btn btn-fresh-green" onClick={() => openModal()}   style={{
-    backgroundColor: "#22C55E"}}>
+          <button
+            className="btn btn-success"
+            onClick={() => openModal()}
+          >
             Add New Category
           </button>
         </div>
 
-        <input
-          type="text"
-          className="form-control mb-3"
-          placeholder="Search categories..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1); // reset page khi search
-          }}
-        />
+        {/* Filter + Search */}
+        <div className="d-flex gap-3 mb-3 align-items-center">
+          {/* ✅ Ant Design Select thay cho select thường */}
+          <Select
+            style={{ width: 200 }}
+            value={filterTopic}
+            onChange={(value) => {
+              setFilterTopic(value);
+              setCurrentPage(1);
+            }}
+            options={topicOptions}
+            listHeight={100} // hiển thị khoảng 2-3 dòng, có thanh cuộn
+            dropdownStyle={{ borderRadius: 8 }}
+          />
 
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search categories..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{ maxWidth: 250 }}
+          />
+        </div>
+
+        {/* Table */}
         {loading ? (
           <p>Loading...</p>
         ) : (
@@ -118,7 +180,7 @@ const CategoriesPage: React.FC = () => {
             <thead className="table-light">
               <tr>
                 <th>Name</th>
-                <th>Description</th>
+                <th>Topic</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -154,7 +216,6 @@ const CategoriesPage: React.FC = () => {
           </table>
         )}
 
-        {/* Pagination */}
         <PaginationAntd
           currentPage={currentPage}
           totalItems={filtered.length}
@@ -163,12 +224,9 @@ const CategoriesPage: React.FC = () => {
         />
       </main>
 
-      {/* Footer */}
-      <footer className="bg-light text-center py-3 mt-auto">
-        &#169; 2024 VocabApp. All rights reserved.
-      </footer>
+      <Footer />
 
-      {/* Modal */}
+      {/* Modal Add/Edit */}
       {modalOpen && (
         <div className="custom-modal-backdrop" onClick={closeModal}>
           <div
@@ -187,25 +245,25 @@ const CategoriesPage: React.FC = () => {
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
               />
-              <label>Description</label>
-              <textarea
+              <label>Topic</label>
+              <input
+                type="text"
                 className="form-control"
-                value={descriptionInput}
-                onChange={(e) => setDescriptionInput(e.target.value)}
+                value={topicInput}
+                onChange={(e) => setTopicInput(e.target.value)}
               />
             </div>
             <div className="custom-modal-footer">
-              <button className="btn btn-cancel" onClick={closeModal}>
+              <button className="btn btn-secondary" onClick={closeModal}>
                 Cancel
               </button>
-              <button className="btn btn-save" onClick={saveCategory}>
+              <button className="btn btn-success" onClick={saveCategory}>
                 {editCategory ? "Save" : "Add"}
               </button>
             </div>
           </div>
         </div>
       )}
-      <Footer></Footer>
     </div>
   );
 };

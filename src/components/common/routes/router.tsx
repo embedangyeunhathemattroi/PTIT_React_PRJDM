@@ -11,7 +11,8 @@ import CategoriesPage from "../../../pages/admin/CategoryPage";
 import Dashboard from "../../../pages/user/Dashboard";
 import FlashCardPage from "../../../pages/user/FlashcardPage";
 import VocabularyPage from "../../../pages/admin/VocabularyPage";
-import QuizPage from "../../UI/QuizProgess";
+import QuizPage from "../../../pages/user/QuizPage";
+
 
 const AppRouter: React.FC = () => {
   return (

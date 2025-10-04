@@ -26,33 +26,49 @@
 //   return res.data;
 // };
 
-
 // src/apis/FlashcardAPI.ts
+
+// Import axiosClient để gọi API tới server
 import axiosClient from "./axiosClient";
+
+// Import kiểu Category và Vocab để gõ kiểu dữ liệu
 import type { Category } from "../types/category";
 import type { Vocab } from "../types/vocab";
 
 /**
- * Lấy tất cả vocabs và categories
- * - Dùng Promise.all để gọi 2 API cùng lúc cho nhanh
+ * Hàm fetchVocabsAndCategoriesApi:
+ * Mục đích: Lấy tất cả vocabs và categories cùng lúc
+ * Cách hoạt động:
+ *   1. Sử dụng Promise.all để gọi đồng thời 2 API:
+ *      - GET /vocabs
+ *      - GET /categories
+ *      => Giúp tốc độ nhanh hơn so với gọi tuần tự
+ *   2. Trả về một object gồm:
+ *      - vocabs: danh sách từ vựng
+ *      - categories: danh sách danh mục
  */
 export const fetchVocabsAndCategoriesApi = async (): Promise<{ vocabs: Vocab[], categories: Category[] }> => {
   const [vocabsRes, categoriesRes] = await Promise.all([
-    axiosClient.get<Vocab[]>("/vocabs"),
-    axiosClient.get<Category[]>("/categories"),
+    axiosClient.get<Vocab[]>("/vocabs"),       // GET tất cả vocabs
+    axiosClient.get<Category[]>("/categories") // GET tất cả categories
   ]);
 
   return {
-    vocabs: vocabsRes.data,
-    categories: categoriesRes.data,
+    vocabs: vocabsRes.data,         // Trả về vocabs
+    categories: categoriesRes.data, // Trả về categories
   };
 };
 
 /**
- * Đánh dấu vocab đã học
- * - Gửi request cập nhật isLearned = true
+ * Hàm markVocabAsLearnedApi:
+ * Mục đích: Đánh dấu một vocab đã học
+ * Cách hoạt động:
+ *   1. Nhận một đối tượng vocab
+ *   2. Gọi PATCH tới endpoint /vocabs/:id
+ *      - Cập nhật isLearned = true
+ *   3. Trả về vocab đã được cập nhật
  */
 export const markVocabAsLearnedApi = async (vocab: Vocab): Promise<Vocab> => {
   const res = await axiosClient.patch<Vocab>(`/vocabs/${vocab.id}`, { ...vocab, isLearned: true });
-  return res.data;
+  return res.data; // Trả về vocab đã đánh dấu là đã học
 };

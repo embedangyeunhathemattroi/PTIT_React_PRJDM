@@ -1,22 +1,26 @@
 import React from "react";
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState } from "../../stores/store";
-import { logoutUser } from "../../stores/slices/authSlice";
-import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux"; // Lấy state và dispatch action
+import type { RootState } from "../../stores/store";   // Kiểu RootState
+import { logoutUser } from "../../stores/slices/authSlice"; // Action logout
+import { useNavigate } from "react-router-dom";       // Dùng để chuyển hướng
 
+// Props Navbar
 interface NavbarProps {
-  activePage?: "login" | "register";
-  onChangePage?: (page: "login" | "register") => void;
+  activePage?: "login" | "register";                // Xác định button nào đang active
+  onChangePage?: (page: "login" | "register") => void; // Callback khi click đổi page
 }
 
 const Navbar: React.FC<NavbarProps> = ({ activePage, onChangePage }) => {
+  // Lấy thông tin user từ Redux
   const user = useSelector((state: RootState) => state.auth.user);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Hàm logout
   const handleLogout = () => {
-    dispatch(logoutUser());
-    navigate("/");
+    dispatch(logoutUser());  // Xóa user khỏi Redux
+    navigate("/");           // Quay về trang chủ
   };
 
   return (
@@ -29,6 +33,7 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onChangePage }) => {
         backgroundColor: "#fff",
       }}
     >
+      {/* Logo / Brand */}
       <div
         style={{
           fontWeight: "bold",
@@ -36,11 +41,12 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onChangePage }) => {
           cursor: "pointer",
           flex: 1,
         }}
-        onClick={() => navigate(user ? "/dashboard" : "/")}
+        onClick={() => navigate(user ? "/dashboard" : "/")} // Click logo => dashboard nếu login, else về home
       >
         VocabApp
       </div>
 
+      {/* Nếu chưa đăng nhập */}
       {!user ? (
         <div style={{ display: "flex", gap: "10px" }}>
           <button
@@ -71,10 +77,11 @@ const Navbar: React.FC<NavbarProps> = ({ activePage, onChangePage }) => {
           </button>
         </div>
       ) : (
+        // Nếu đã đăng nhập
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <span>Hi, {user.firstName}</span>
+          <span>Hi, {user.firstName}</span> {/* Hiển thị tên user */}
           <button
-            onClick={handleLogout}
+            onClick={handleLogout} // Logout
             style={{
               padding: "8px 16px",
               borderRadius: "5px",

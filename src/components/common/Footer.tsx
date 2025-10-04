@@ -4,7 +4,7 @@ export default function Footer() {
   return (
     <footer
       style={{
-        position: 'fixed',   // luôn dính đáy
+        position: 'fixed',   
         bottom: 0,
         left: 0,
         width: '100%',       

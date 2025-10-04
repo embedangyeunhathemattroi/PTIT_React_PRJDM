@@ -41,44 +41,44 @@ const QuizModal: React.FC<QuizModalProps> = ({ visible, onClose, questions, cate
   }, [visible]);
 
   const currentQuestion = questions[currentIndex];
+  const currentAnswerRecord = answers.find(a => a.questionId === currentQuestion?.id);
 
   const handleNext = () => {
-    if (!selectedAnswer) return;
+    if (!selectedAnswer && !currentAnswerRecord) return;
 
     const isCorrect = selectedAnswer === currentQuestion.answer;
-    if (isCorrect) setScore(prev => prev + 1);
+    const newAnswer: AnswerRecord = {
+      questionId: currentQuestion.id,
+      selected: selectedAnswer || currentAnswerRecord?.selected || "",
+      correct: currentQuestion.answer,
+      isCorrect,
+    };
 
-    setAnswers(prev => [
-      ...prev.filter(a => a.questionId !== currentQuestion.id),
-      {
-        questionId: currentQuestion.id,
-        selected: selectedAnswer,
-        correct: currentQuestion.answer,
-        isCorrect,
-      }
-    ]);
+    const updatedAnswers = [
+      ...answers.filter(a => a.questionId !== currentQuestion.id),
+      newAnswer
+    ];
+    setAnswers(updatedAnswers);
+    if (isCorrect) setScore(prev => prev + 1);
 
     setSelectedAnswer(null);
 
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      // Kết thúc quiz
-      const percent = questions.length > 0 ? (score / questions.length) * 100 : 0;
-      const imgUrl = percent >= 70 
+      // Quiz finished
+      const finalScore = updatedAnswers.filter(a => a.isCorrect).length;
+      const percent = (finalScore / questions.length) * 100;
+      const imgUrl = percent >= 70
         ? "https://img.powerpoint.com.vn/uploads/2024/01/27/nhung-hinh-anh-vui-nhon-chen-vao-powerpoint-98_042701237.gif"
         : "https://i.pinimg.com/originals/0e/33/30/0e3330287169a30f2df9ce0d137f7031.gif";
 
       Swal.fire({
         title: percent >= 70 ? "🎉 Chúc mừng!" : "😅 Cố gắng hơn nhé!",
-        html: `
-          <img src="${imgUrl}" style="width:150px;height:150px;display:block;margin:0 auto 20px;" />
-          <p style="font-size:16px;">Bạn đạt ${score}/${questions.length} câu đúng!</p>
-        `,
-        showCloseButton: true,
+        html: `<img src="${imgUrl}" style="width:150px;height:150px;display:block;margin:0 auto 20px;" />
+               <p style="font-size:16px;">Bạn đạt ${finalScore}/${questions.length} câu đúng!</p>`,
         confirmButtonText: "Xem chi tiết đáp án"
       }).then(() => {
-        // Hiển thị bảng chi tiết
         Swal.fire({
           title: "Chi tiết đáp án",
           html: `
@@ -92,7 +92,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ visible, onClose, questions, cate
                 </tr>
               </thead>
               <tbody>
-                ${answers.map(a => {
+                ${updatedAnswers.map(a => {
                   const q = questions.find(q => q.id === a.questionId);
                   return `<tr>
                     <td>${q?.question}</td>
@@ -111,7 +111,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ visible, onClose, questions, cate
         });
       });
 
-      onSaveResult(score, answers);
+      onSaveResult(finalScore, updatedAnswers);
       onClose();
     }
   };
@@ -121,7 +121,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ visible, onClose, questions, cate
   };
 
   const quizProgress = questions.length > 0
-    ? ((currentIndex + 1) / questions.length) * 100
+    ? (answers.length / questions.length) * 100
     : 0;
 
   return (
@@ -132,23 +132,45 @@ const QuizModal: React.FC<QuizModalProps> = ({ visible, onClose, questions, cate
       onCancel={onClose}
       width={700}
     >
-      {questions.length > 0 && (
+      {questions.length > 0 && currentQuestion && (
         <>
           <Progress percent={quizProgress} style={{ marginBottom: 20 }} />
           <Card style={{ marginBottom: 20 }}>
-            <h3 style={{ backgroundColor: selectedAnswer ? "#e6f7e6" : "transparent", padding:"5px 10px", borderRadius:4 }}>
+            <h3 style={{ backgroundColor: currentAnswerRecord ? "#e6f7e6" : "transparent", padding:"5px 10px", borderRadius:4 }}>
               {currentQuestion.question}
             </h3>
             <Radio.Group
-              value={selectedAnswer}
+              value={selectedAnswer || currentAnswerRecord?.selected || null}
               onChange={e => setSelectedAnswer(e.target.value)}
               style={{ width:"100%" }}
             >
-              {currentQuestion.options.map(opt => (
-                <Radio key={opt} value={opt} style={{ display:"block", margin:"8px 0", padding:5, borderRadius:4 }}>
-                  {opt}
-                </Radio>
-              ))}
+              {currentQuestion.options.map(opt => {
+                const record = answers.find(a => a.questionId === currentQuestion.id);
+                const isSelected = selectedAnswer === opt || record?.selected === opt;
+                const correct = record?.correct === opt;
+                const wrong = record && record.selected === opt && !record.isCorrect;
+
+                return (
+                  <Radio
+                    key={opt}
+                    value={opt}
+                    style={{
+                      display:"block",
+                      margin:"8px 0",
+                      padding:5,
+                      borderRadius:4,
+                      backgroundColor: correct ? "#d9f7be" : wrong ? "#ffccc7" : (isSelected ? "#f0f9ff" : "transparent")
+                    }}
+                  >
+                    {opt}
+                    {record && (correct || wrong) && (
+                      <span style={{ marginLeft: 10, color: correct ? "green" : "red" }}>
+                        {correct ? "✔" : "✖"}
+                      </span>
+                    )}
+                  </Radio>
+                );
+              })}
             </Radio.Group>
           </Card>
           <div style={{ display:"flex", justifyContent:"space-between" }}>

@@ -163,3 +163,23 @@ footer {
   background-color: #22c55e !important; /* xanh hover đậm hơn */
   border-color: #22c55e !important;
 }
+
+/* Giới hạn chiều cao dropdown filter */
+.form-select {
+  max-height: 120px; /* chỉ hiển thị khoảng 2–3 dòng */
+  overflow-y: auto; /* bật thanh cuộn dọc */
+}
+
+/* Tùy chọn: ẩn thanh cuộn xấu */
+.form-select::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-select::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+.form-select::-webkit-scrollbar-thumb:hover {
+  background-color: #888;
+}

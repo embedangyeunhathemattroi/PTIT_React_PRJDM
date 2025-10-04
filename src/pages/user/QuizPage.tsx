@@ -60,19 +60,20 @@ const QuizPage: React.FC = () => {
     dispatch(fetchResults());
   }, [dispatch]);
 
-  // === Quiz Data ===
+  // Filter questions
   const filteredQuestions = questions.filter(q =>
     (selectedCategory === "All Categories" || q.category === selectedCategory) &&
     q.question.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const quizProgress = filteredQuestions.length > 0
-    ? ((currentIndex + 1) / filteredQuestions.length) * 100
-    : 0;
+  // Progress calculation
+  const answeredCount = answers.length;
+  const totalQuestions = filteredQuestions.length;
+  const quizProgress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
   const currentAnswerRecord = answers.find(a => a.questionId === filteredQuestions[currentIndex]?.id);
 
-  // === Quiz Handlers ===
+  // Quiz Handlers
   const handleStartQuiz = () => {
     setQuizStarted(true);
     setCurrentIndex(0);
@@ -81,6 +82,7 @@ const QuizPage: React.FC = () => {
     setScore(0);
     setQuizFinished(false);
   };
+
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
@@ -88,10 +90,11 @@ const QuizPage: React.FC = () => {
       setSelectedAnswer(prevAnswer?.selected || null);
     }
   };
-  const handleNext = () => {
+
+  const handleNext = async () => {
+    const currentQuestion = filteredQuestions[currentIndex];
     if (!selectedAnswer && !quizFinished) return;
 
-    const currentQuestion = filteredQuestions[currentIndex];
     const isCorrect = selectedAnswer === currentQuestion.answer;
     if (!quizFinished && isCorrect) setScore(prev => prev + 1);
 
@@ -112,12 +115,60 @@ const QuizPage: React.FC = () => {
     if (currentIndex < filteredQuestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
+      // Finish Quiz
       setQuizFinished(true);
       setQuizStarted(false);
+
+      const finalScore = score + (isCorrect ? 1 : 0);
+      const percent = Math.round((finalScore / totalQuestions) * 100);
+
+      // SweetAlert result
+      Swal.fire({
+        title: percent >= 70 ? "Great Job! " : "Keep Trying! ",
+        html: `
+          <p>You scored ${finalScore} / ${totalQuestions} (${percent}%)</p>
+          <h4>Answer Review:</h4>
+          <ul>
+            ${answers.map(a => {
+              const q = filteredQuestions.find(q => q.id === a.questionId);
+              return `<li><strong>${q?.question}</strong><br/>
+                      Your answer: ${a.selected} ${a.isCorrect ? "✔" : "✖"}<br/>
+                      Correct: ${a.correct}</li>`;
+            }).join("")}
+            <li><strong>${currentQuestion.question}</strong><br/>
+            Your answer: ${selectedAnswer} ${isCorrect ? "&#10004;" : "&#10006;"}
+<br/>
+            Correct: ${currentQuestion.answer}</li>
+          </ul>
+        `,
+        icon: percent >= 70 ? "success" : "warning",
+        width: 600
+      });
+
+      // Send result to server
+      try {
+        await fetch("http://localhost:8080/results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString(),
+            category: selectedCategory,
+            score: finalScore,
+            total: totalQuestions,
+            answers: [
+              ...answers,
+              { questionId: currentQuestion.id, selected: selectedAnswer!, correct: currentQuestion.answer, isCorrect }
+            ]
+          })
+        });
+        dispatch(fetchResults());
+      } catch (err) {
+        console.error("Failed to save result:", err);
+      }
     }
   };
 
-  // === Manage Questions Handlers ===
+  // Manage Questions
   const handleAddQuestion = () => {
     setEditingQuestion(null);
     form.resetFields();
@@ -169,12 +220,11 @@ const QuizPage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '100%', padding: 10, margin: "20px auto", minHeight: "80vh", display: "flex", flexDirection: "column" }}>
-      
-      {/* Header + Toolbar */}
+      {/* Header */}
       <Row style={{ marginBottom: 20, display: "flex", alignItems: "center" }}>
         <Col flex="auto"><h2><strong>Vocabulary Quiz</strong></h2></Col>
         <Col>
-          {!quizStarted && !quizFinished && (
+          {!quizStarted && (
             <>
               <Button type="primary" onClick={handleStartQuiz} style={{ marginRight: 10 }}>Start Quiz</Button>
               <Button onClick={() => setManageMode(prev => !prev)}>
@@ -185,7 +235,7 @@ const QuizPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* === Manage Questions Toolbar === */}
+      {/* Manage Questions */}
       {manageMode && (
         <Card style={{ marginBottom: 20 }}>
           <Row gutter={16} align="middle">
@@ -259,7 +309,7 @@ const QuizPage: React.FC = () => {
         </Card>
       )}
 
-      {/* === Quiz Section === */}
+      {/* Quiz Section */}
       {!manageMode && (
         <>
           <Select
@@ -274,6 +324,7 @@ const QuizPage: React.FC = () => {
             ))}
           </Select>
 
+          {/* Progress */}
           {quizStarted && (
             <Progress percent={quizProgress} style={{ marginBottom: 20 }} />
           )}
@@ -314,7 +365,7 @@ const QuizPage: React.FC = () => {
                       {opt}
                       {record && (correct || wrong) && (
                         <span style={{ marginLeft: 10, color: correct ? "green" : "red" }}>
-                          {correct ? "✔" : "✖"}
+                   
                         </span>
                       )}
                     </Radio>
@@ -330,6 +381,7 @@ const QuizPage: React.FC = () => {
             </Card>
           )}
 
+          {/* Navigation */}
           {quizStarted && (
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
               <Button onClick={handlePrev} disabled={currentIndex === 0}>Prev</Button>
@@ -339,6 +391,7 @@ const QuizPage: React.FC = () => {
             </div>
           )}
 
+          {/* Quiz History */}
           <h3>Quiz History</h3>
           {loading ? <Spin /> : (
             <>
